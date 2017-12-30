@@ -45,7 +45,7 @@ class Http
 
     public:
         Http();
-        Http(const char* url, const Method method);
+        Http(const char* url, const Method method = Method::GET);
 
         void set_remote_host(const char* url);
         void set_remote_port(const unsigned int port);
