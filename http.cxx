@@ -1,5 +1,7 @@
 #include "http.h"
 
+using namespace std;
+
 Http::Http() 
     : _socket {socket(AF_INET, SOCK_STREAM, 0)},
       _method {Method::GET},
@@ -19,7 +21,7 @@ Http::Http(const char* url, const Method method)
 
     this->get_host_by_url(url);
 
-    std::string host_header = "Host: " + this->_hostname;
+    string host_header = "Host: " + this->_hostname;
     this->_headers = {
         host_header
     };
@@ -42,14 +44,14 @@ void Http::set_method(const Method method)
     this->_method = method;
 }
 
-void Http::add_header(const std::string header)
+void Http::add_header(const string header)
 {
-    std::string new_header_name = header.substr(0, header.find(':'));
+    string new_header_name = header.substr(0, header.find(':'));
 
     bool replace = false;
     for (unsigned int i = 0 ; i < this->_headers.size() ; i++)
     {
-        std::string head_n = this->_headers.at(i).substr(0, this->_headers.at(i).find(':'));
+        string head_n = this->_headers.at(i).substr(0, this->_headers.at(i).find(':'));
         if (new_header_name == head_n)
         {
             this->_headers.at(i) = header;
@@ -61,7 +63,7 @@ void Http::add_header(const std::string header)
         this->_headers.push_back(header);
 }
 
-void Http::set_data(const std::vector<std::string> data)
+void Http::set_data(const vector<string> data)
 {
     this->_data.clear();
 
@@ -75,7 +77,7 @@ void Http::set_data(const std::vector<std::string> data)
         data_len += p.length() + 1;
 
     this->add_header("Content-Type: application/x-www-form-urlencoded");
-    this->add_header("Content-Length: " + std::to_string(data_len - 1));
+    this->add_header("Content-Length: " + to_string(data_len - 1));
 }
 
 char* Http::get_remote_host() const
@@ -94,33 +96,33 @@ Method Http::get_method() const
     return this->_method;
 }
 
-std::vector<std::string> Http::get_headers() const
+vector<string> Http::get_headers() const
 {
     return this->_headers;
 }
 
-std::vector<std::string> Http::get_data() const
+vector<string> Http::get_data() const
 {
     return this->_data;
 }
 
 // ======================================================================= //
 
-std::string Http::request(const bool auto_close)
+string Http::request(const bool auto_close)
 {
     char buffer[BUFFER_SIZE] = { 0 };
-    std::string response = "";
+    string response = "";
 
     if (connect(this->_socket,
                 (struct sockaddr *)&this->_remote_server,
                 sizeof(this->_remote_server)) < 0)
     {
-        std::cout << "Connection Failed" << std::endl;
+        cout << "Connection Failed" << endl;
         exit(1);
     }
 
     //adding request line
-    std::string http_request = method_from_enum(this->_method) + " "
+    string http_request = method_from_enum(this->_method) + " "
             + this->_resource_path +" HTTP/1.1\r\n";
 
     //adding headers
@@ -149,9 +151,9 @@ std::string Http::request(const bool auto_close)
     response.append(buffer);
 
     //trying to get the content-length header
-    std::istringstream f(buffer);
-    std::string line;
-    while (std::getline (f, line))
+    istringstream f(buffer);
+    string line;
+    while (getline (f, line))
     {
         //getting header size to get number of bytes to read
         header_size += line.length() - 1;
@@ -207,28 +209,27 @@ void Http::close_socket()
 
 void Http::get_host_by_url(const char* url)
 {
-    std::vector<std::string> tokens = {};
-    char url_copy[sizeof url + 1];
-    strcpy(url_copy, url);
-
-    char *tok = strtok (url_copy, "/");
-    while (tok != NULL)
-    {
-        tokens.push_back(tok);
-        tok = strtok (NULL, "/");
+    if(strstr(url, "https://") != NULL) {
+        url += sizeof("https://")-1;
+        cout << "HTTPS not yet supported." << endl;
+        exit(1);
     }
 
-    unsigned short i = 0;
-    for (auto const& s : tokens)
-    {
-        if (i == 0)
-            this->_hostname = (char *)s.c_str();
-        else if (i == tokens.size()-1)
-            this->_resource_path += s;
-        else
-            this->_resource_path += s + "/";
-        i++;
+    else if(strstr(url, "http://") != NULL)
+	url += sizeof("http://")-1;
+
+    const char *search = strstr(url, "/");
+
+    if(search != NULL) {
+        char *host = new char[strlen(url + (search-url))+1];
+        strncpy(host, url, search-url);
+        this->_hostname = string(host);
+        delete host;
+        this->_resource_path = string(search);
     }
+
+    else
+        this->_hostname = string(url);
 
     if (inet_pton(AF_INET, this->_hostname.c_str(), &(this->_remote_server.sin_addr)) < 1)
     {
@@ -242,6 +243,7 @@ void Http::get_host_by_url(const char* url)
         if ((status = getaddrinfo(this->_hostname.c_str(), "http", &hints, &servinfo)) != 0)
         {
             fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+            exit(1);
         }
 
         char ipstr[INET6_ADDRSTRLEN];
@@ -264,7 +266,7 @@ void Http::get_host_by_url(const char* url)
 }
 
 
-const std::string Http::method_from_enum (Method method)
+const string Http::method_from_enum (Method method)
 {
     switch (method)
     {
@@ -280,7 +282,7 @@ const std::string Http::method_from_enum (Method method)
 }
 
 
-bool Http::startswith(std::string str, std::string substr)
+bool Http::startswith(string str, string substr)
 {
     if (str.length() < 1 || substr.length() < 1)
         return false;
